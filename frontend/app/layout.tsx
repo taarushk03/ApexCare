@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HealthSync - Smart Digital Healthcare Ecosystem",
+  title: "ApexCare - Smart Digital Healthcare Ecosystem",
   description: "Innovative healthcare platform for all your medical needs.",
 };
 

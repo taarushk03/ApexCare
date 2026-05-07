@@ -72,13 +72,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     users.push(userData);
     localStorage.setItem('users', JSON.stringify(users));
     
-    // Auto-login after registration
-    const { password: _, ...userWithoutPassword } = userData;
-    setUser(userWithoutPassword);
-    setIsAuthenticated(true);
-    localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
-    localStorage.setItem('isAuthenticated', 'true');
-    router.push('/dashboard');
     return { success: true };
   };
 

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { Logo } from '@/components/ui/Logo';
 
 const Navbar: React.FC = () => {
   const pathname = usePathname();
@@ -29,26 +30,7 @@ const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 font-sans">
         <div className="flex justify-between h-20 items-center">
           <div className="flex items-center">
-            <Link href="/dashboard" className="flex items-center space-x-3 group">
-              <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-100 group-hover:scale-110 transition-transform duration-300 ring-2 ring-blue-50">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="28"
-                  height="28"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-                </svg>
-              </div>
-              <span className="text-2xl font-black text-slate-900 tracking-tightest group-hover:tracking-tight transition-all">
-                Health<span className="text-blue-600">Sync</span>
-              </span>
-            </Link>
+            <Logo />
           </div>
 
           <div className="hidden md:flex space-x-2">

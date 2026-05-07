@@ -1,24 +1,38 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/InputCard';
+import EmailInput from '@/components/ui/EmailInput';
 import { useAuth } from '@/context/AuthContext';
+import { Logo } from '@/components/ui/Logo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [successMessage, setSuccessMessage] = useState('');
+  const [isEmailValid, setIsEmailValid] = useState(false);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const { login } = useAuth();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('registered') === 'true') {
+        setSuccessMessage('Account created successfully. Please login.');
+        // Clean up URL for cleaner UX
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
 
-    if (!email.trim()) {
-      newErrors.email = 'Email indicator is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Please provide a valid email format';
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = 'Please enter a valid email address';
     }
 
     if (!password.trim()) {
@@ -31,9 +45,38 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const isFormEmpty = !email.trim() || !password.trim();
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    if (errors.email) {
+      setErrors(prev => { const next = { ...prev }; delete next.email; return next; });
+    }
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPassword(value);
+    if (errors.password) {
+      setErrors(prev => { const next = { ...prev }; delete next.password; return next; });
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, nextRef?: React.RefObject<HTMLInputElement | null>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (nextRef && nextRef.current) {
+        nextRef.current.focus();
+      } else if (email.trim() && password.trim() && isEmailValid) {
+        handleSubmit(e as any);
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) return;
+    if (!isEmailValid) return;
     
     if (validateForm()) {
       const result = await login(email, password);
@@ -47,50 +90,46 @@ export default function LoginPage() {
     }
   };
 
-  const isFormEmpty = !email.trim() || !password.trim();
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center p-3 bg-blue-600 rounded-xl mb-4 shadow-lg shadow-blue-200">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="white"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-            </svg>
-          </div>
-          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Welcome Back</h2>
+        <div className="flex flex-col items-center text-center">
+          <Logo isLink={false} className="mb-4 transform scale-110" />
+          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-4">Welcome Back</h2>
           <p className="mt-2 text-sm text-slate-500">
-            Sign in to access your HealthSync dashboard
+            Sign in to access your ApexCare dashboard
           </p>
         </div>
         
+        {successMessage && (
+          <div className="mt-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm font-medium flex items-center shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {successMessage}
+          </div>
+        )}
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
-            <Input
+            <EmailInput
               label="Email Address"
-              type="email"
               placeholder="john.doe@example.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={handleEmailChange}
+              onValidationChange={setIsEmailValid}
+              onKeyDown={(e) => handleKeyDown(e, passwordRef)}
               error={errors.email}
               required
             />
             <Input
+              ref={passwordRef}
               label="Password"
               type="password"
               placeholder="••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={handlePasswordChange}
+              onKeyDown={(e) => handleKeyDown(e)}
               error={errors.password}
               required
             />

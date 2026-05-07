@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/InputCard';
+import EmailInput from '@/components/ui/EmailInput';
 import { useAuth } from '@/context/AuthContext';
+import { Logo } from '@/components/ui/Logo';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -17,6 +20,23 @@ export default function RegisterPage() {
   const [isTermsAgreed, setIsTermsAgreed] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { register } = useAuth();
+  const router = useRouter();
+
+  const lastNameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const confirmPasswordRef = useRef<HTMLInputElement>(null);
+
+  const validations = {
+    length: formData.password.length >= 8,
+    uppercase: /[A-Z]/.test(formData.password),
+    lowercase: /[a-z]/.test(formData.password),
+    number: /[0-9]/.test(formData.password),
+    special: /[^A-Za-z0-9]/.test(formData.password),
+  };
+
+  const strengthScore = Object.values(validations).filter(Boolean).length;
+  const isPasswordValid = strengthScore === 5;
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -25,14 +45,10 @@ export default function RegisterPage() {
     
     if (!formData.email.trim()) {
       newErrors.email = 'Registered email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please provide a valid email format';
     }
 
-    if (!formData.password.trim()) {
-      newErrors.password = 'Strong password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    if (!isPasswordValid) {
+      newErrors.password = 'Password does not meet all requirements';
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -46,13 +62,13 @@ export default function RegisterPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let { name, value } = e.target;
     
-    // Auto capitalization for name fields
     if (name === 'firstName' || name === 'lastName') {
       value = value.charAt(0).toUpperCase() + value.slice(1);
     }
     
     setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) {
+
+    if (errors[name] && name !== 'email') {
       setErrors(prev => {
         const next = { ...prev };
         delete next[name];
@@ -61,18 +77,13 @@ export default function RegisterPage() {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, nextRef?: React.RefObject<HTMLInputElement | null>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      const form = e.currentTarget.form;
-      if (form) {
-        const index = Array.from(form.elements).indexOf(e.currentTarget);
-        const nextElement = form.elements[index + 1] as HTMLElement;
-        if (nextElement && (nextElement.tagName === 'INPUT' || nextElement.tagName === 'BUTTON')) {
-            nextElement.focus();
-        } else if (isFormValid) {
-            handleSubmit(e as any);
-        }
+      if (nextRef && nextRef.current) {
+        nextRef.current.focus();
+      } else if (isFormValid) {
+        handleSubmit(e as any);
       }
     }
   };
@@ -90,42 +101,27 @@ export default function RegisterPage() {
 
       if (!result.success) {
         setErrors({ email: result.error || 'Registration failed' });
+      } else {
+        router.push('/login?registered=true');
       }
     }
   };
 
-  const isEmailValid = /\S+@\S+\.\S+/.test(formData.email);
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
   const isFormValid = formData.firstName.trim().length > 0 && 
                       isEmailValid && 
-                      formData.password.length >= 6 && 
+                      isPasswordValid && 
                       formData.password === formData.confirmPassword && 
                       isTermsAgreed;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center p-3 bg-teal-500 rounded-xl mb-4 shadow-lg shadow-teal-100">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="white"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <line x1="19" y1="8" x2="19" y2="14" />
-              <line x1="22" y1="11" x2="16" y2="11" />
-            </svg>
-          </div>
-          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Create Account</h2>
+        <div className="flex flex-col items-center text-center">
+          <Logo isLink={false} className="mb-4 transform scale-110" />
+          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-4">Create Account</h2>
           <p className="mt-2 text-sm text-slate-500">
-            Join HealthSync to manage your healthcare journey
+            Join ApexCare to manage your healthcare journey
           </p>
         </div>
         
@@ -138,53 +134,95 @@ export default function RegisterPage() {
                 placeholder="John"
                 value={formData.firstName}
                 onChange={handleChange}
-                onKeyDown={handleKeyDown}
+                onKeyDown={(e) => handleKeyDown(e, lastNameRef)}
                 error={errors.firstName}
+                isValid={formData.firstName.trim().length > 0 && !errors.firstName}
                 required
               />
               <Input
+                ref={lastNameRef}
                 label="Last Name"
                 name="lastName"
                 placeholder="Doe"
                 value={formData.lastName}
                 onChange={handleChange}
-                onKeyDown={handleKeyDown}
+                onKeyDown={(e) => handleKeyDown(e, emailRef)}
                 error={errors.lastName}
+                isValid={formData.lastName.trim().length > 0 && !errors.lastName}
               />
             </div>
-            <Input
+            <EmailInput
+              ref={emailRef}
               label="Email Address"
               name="email"
-              type="email"
               placeholder="john.doe@example.com"
               value={formData.email}
               onChange={handleChange}
-              onKeyDown={handleKeyDown}
+              onKeyDown={(e) => handleKeyDown(e, passwordRef)}
               error={errors.email}
               required
             />
-            <Input
-              label="Password"
-              name="password"
-              type="password"
-              placeholder="••••••••"
-              value={formData.password}
-              onChange={handleChange}
-              onKeyDown={handleKeyDown}
-              error={errors.password}
-              required
-            />
-            <Input
-              label="Confirm Password"
-              name="confirmPassword"
-              type="password"
-              placeholder="••••••••"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              onKeyDown={handleKeyDown}
-              error={errors.confirmPassword}
-              required
-            />
+            <div>
+              <Input
+                ref={passwordRef}
+                label="Password"
+                name="password"
+                type="password"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={handleChange}
+                onKeyDown={(e) => handleKeyDown(e, confirmPasswordRef)}
+                error={errors.password}
+                isValid={isPasswordValid && !errors.password}
+                required
+              />
+              {formData.password && (
+                <div className="space-y-2 mt-3 px-1">
+                  <div className="flex space-x-1 h-1.5">
+                    <div className={`flex-1 rounded-full transition-colors ${strengthScore > 0 ? (strengthScore < 3 ? 'bg-red-500' : strengthScore < 5 ? 'bg-yellow-500' : 'bg-green-500') : 'bg-slate-200'}`}></div>
+                    <div className={`flex-1 rounded-full transition-colors ${strengthScore > 2 ? (strengthScore < 5 ? 'bg-yellow-500' : 'bg-green-500') : 'bg-slate-200'}`}></div>
+                    <div className={`flex-1 rounded-full transition-colors ${strengthScore === 5 ? 'bg-green-500' : 'bg-slate-200'}`}></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 mt-2">
+                    <div className={`flex items-center space-x-1 ${validations.length ? 'text-green-600 font-bold' : ''}`}>
+                      <span>{validations.length ? '✔' : '❌'}</span><span>Min 8 characters</span>
+                    </div>
+                    <div className={`flex items-center space-x-1 ${validations.uppercase ? 'text-green-600 font-bold' : ''}`}>
+                      <span>{validations.uppercase ? '✔' : '❌'}</span><span>1 uppercase letter</span>
+                    </div>
+                    <div className={`flex items-center space-x-1 ${validations.lowercase ? 'text-green-600 font-bold' : ''}`}>
+                      <span>{validations.lowercase ? '✔' : '❌'}</span><span>1 lowercase letter</span>
+                    </div>
+                    <div className={`flex items-center space-x-1 ${validations.number ? 'text-green-600 font-bold' : ''}`}>
+                      <span>{validations.number ? '✔' : '❌'}</span><span>1 number</span>
+                    </div>
+                    <div className={`flex items-center space-x-1 ${validations.special ? 'text-green-600 font-bold' : ''}`}>
+                      <span>{validations.special ? '✔' : '❌'}</span><span>1 special char</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div>
+              <Input
+                ref={confirmPasswordRef}
+                label="Confirm Password"
+                name="confirmPassword"
+                type="password"
+                placeholder="••••••••"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                onKeyDown={(e) => handleKeyDown(e)}
+                error={errors.confirmPassword}
+                isValid={formData.confirmPassword.length > 0 && formData.confirmPassword === formData.password && !errors.confirmPassword}
+                required
+              />
+              {formData.confirmPassword.length > 0 && (
+                <div className={`mt-2 text-xs font-semibold px-1 ${formData.confirmPassword === formData.password ? 'text-green-600' : 'text-red-500'}`}>
+                  {formData.confirmPassword === formData.password ? '✅ Passwords match' : '❌ Passwords do not match'}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex items-start">
