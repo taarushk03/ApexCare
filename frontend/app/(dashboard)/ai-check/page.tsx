@@ -4,21 +4,48 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import { Card } from '@/components/ui/InputCard';
+import { useAuth } from '@/context/AuthContext';
 
 export default function AICheckPage() {
   const [symptoms, setSymptoms] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const router = useRouter();
+  const { user } = useAuth();
 
-  const handleAnalyze = (e: React.FormEvent) => {
+  const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!symptoms.trim()) return;
 
     setIsAnalyzing(true);
-    // Simulate AI analysis time
-    setTimeout(() => {
+
+    try {
+      const response = await fetch('http://localhost:8001/analyze-symptoms', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ symptoms }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to connect to AI engine');
+      }
+
+      const data = await response.json();
+      console.log('AI Analysis Response Data:', data);
+
+      const email = user?.email || 'guest';
+      const saveKey = `apexcare_active_report_${email}`;
+      
+      localStorage.setItem(saveKey, JSON.stringify(data));
+      console.log(`Report successfully saved to localStorage under key: ${saveKey}`);
+      
       router.push('/consultation');
-    }, 2500);
+    } catch (error) {
+      console.error("AI Analysis Error:", error);
+      alert("Failed to analyze symptoms. Please ensure the Python backend is running on port 8001.");
+      setIsAnalyzing(false);
+    }
   };
 
   return (
@@ -36,7 +63,7 @@ export default function AICheckPage() {
             strokeLinecap="round"
             strokeLinejoin="round"
           >
-            <path d="M12 2v10"/><path d="M18.4 6.9c.8.8 1.3 1.9 1.5 3.1.2 1.1 0 2.2-.4 3.1a6.4 6.4 0 0 1-5.3 4.4 6.4 6.4 0 0 1-5.3-4.4c-.4-.9-.6-2-.4-3.1.2-1.2.7-2.3 1.5-3.1"/><path d="m9 15 3-3 3 3"/>
+            <path d="M12 2v10" /><path d="M18.4 6.9c.8.8 1.3 1.9 1.5 3.1.2 1.1 0 2.2-.4 3.1a6.4 6.4 0 0 1-5.3 4.4 6.4 6.4 0 0 1-5.3-4.4c-.4-.9-.6-2-.4-3.1.2-1.2.7-2.3 1.5-3.1" /><path d="m9 15 3-3 3 3" />
           </svg>
         </div>
         <h1 className="text-4xl font-black text-slate-900 tracking-tightest leading-tight">AI Symptom Checker</h1>
@@ -47,7 +74,7 @@ export default function AICheckPage() {
 
       <Card className="p-10 shadow-2xl border-2 border-slate-50 rounded-[3rem] overflow-visible relative group">
         <div className="absolute -top-6 -left-6 bg-blue-600 text-white p-4 rounded-2xl shadow-xl shadow-blue-100 z-10 -rotate-12">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m21 11-8-8L5 11l8 8 8-8Z"/><path d="M13 10V6"/><path d="M13 14v-4l-4 4"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m21 11-8-8L5 11l8 8 8-8Z" /><path d="M13 10V6" /><path d="M13 14v-4l-4 4" /></svg>
         </div>
 
         <form onSubmit={handleAnalyze} className="space-y-10">
@@ -67,17 +94,17 @@ export default function AICheckPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 px-2">
             {[
-                { label: 'Feverish', sub: 'Body temp > 99°F', color: 'blue', icon: '🌡️' },
-                { label: 'Difficulty Breathing', sub: 'Shortness of breath', color: 'amber', icon: '🫁' }
+              { label: 'Feverish', sub: 'Body temp > 99°F', color: 'blue', icon: '🌡️' },
+              { label: 'Difficulty Breathing', sub: 'Shortness of breath', color: 'amber', icon: '🫁' }
             ].map((item) => (
-                <div key={item.label} className="bg-slate-50/50 p-6 rounded-[1.75rem] flex items-center space-x-4 border-2 border-slate-50 hover:border-blue-100 hover:bg-white transition-all group">
-                  <div className="text-2xl group-hover:scale-110 transition-transform">{item.icon}</div>
-                  <div className="flex-1">
-                    <p className="text-xs font-black text-slate-800 uppercase tracking-tighter leading-none">{item.label}</p>
-                    <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">{item.sub}</p>
-                  </div>
-                  <input type="checkbox" className="h-6 w-6 rounded-lg border-2 border-slate-200 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer" />
+              <div key={item.label} className="bg-slate-50/50 p-6 rounded-[1.75rem] flex items-center space-x-4 border-2 border-slate-50 hover:border-blue-100 hover:bg-white transition-all group">
+                <div className="text-2xl group-hover:scale-110 transition-transform">{item.icon}</div>
+                <div className="flex-1">
+                  <p className="text-xs font-black text-slate-800 uppercase tracking-tighter leading-none">{item.label}</p>
+                  <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">{item.sub}</p>
                 </div>
+                <input type="checkbox" className="h-6 w-6 rounded-lg border-2 border-slate-200 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer" />
+              </div>
             ))}
           </div>
 
@@ -106,14 +133,14 @@ export default function AICheckPage() {
       <div className="mt-20 bg-white rounded-[2.5rem] border-4 border-slate-50 p-10 shadow-sm flex flex-col md:flex-row items-center md:items-start gap-8">
         <div className="bg-amber-50 p-5 rounded-[1.5rem] text-amber-600 border-2 border-white shadow-xl rotate-12">
           <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" />
           </svg>
         </div>
         <div>
           <h3 className="font-black text-slate-800 text-xl tracking-tight mb-3">Medical Disclaimer</h3>
           <p className="text-slate-400 text-sm leading-relaxed font-bold italic">
-            This preliminary analysis is <strong>not a medical diagnosis</strong>. 
-            Information provided should not be considered medical advice. 
+            This preliminary analysis is <strong>not a medical diagnosis</strong>.
+            Information provided should not be considered medical advice.
             In case of emergency, contact your local emergency services immediately.
           </p>
         </div>

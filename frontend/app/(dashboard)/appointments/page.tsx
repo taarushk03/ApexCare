@@ -4,6 +4,15 @@ import React, { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import { Card } from '@/components/ui/InputCard';
 import { useAuth } from '@/context/AuthContext';
+import { 
+  initSharedData, 
+  getSharedDoctors, 
+  getSharedAppointments, 
+  saveSharedAppointment, 
+  deleteSharedAppointment,
+  Doctor,
+  Appointment
+} from '@/lib/sharedData';
 
 const specialties = [
   'All Specialties',
@@ -17,77 +26,9 @@ const specialties = [
   'Psychiatatrist',
 ];
 
-const doctors = [
-  {
-    id: 1,
-    name: 'Dr. Sarah Smith',
-    specialty: 'Cardiologist',
-    experience: '12 years exp.',
-    rating: '4.9',
-    image: 'SS',
-    bio: 'Specialist in interventional cardiology and cardiovascular disease management.',
-    fee: 50,
-    availableTime: ['10:30 AM', '02:15 PM', '04:45 PM'],
-  },
-  {
-    id: 2,
-    name: 'Dr. Michael Chen',
-    specialty: 'Neurologist',
-    experience: '8 years exp.',
-    rating: '4.8',
-    image: 'MC',
-    bio: 'Expert in neurological disorders, including migraine and epilepsy treatments.',
-    fee: 65,
-    availableTime: ['09:00 AM', '11:30 AM', '03:00 PM'],
-  },
-  {
-    id: 3,
-    name: 'Dr. Emily Johnson',
-    specialty: 'Pediatrician',
-    experience: '15 years exp.',
-    rating: '5.0',
-    image: 'EJ',
-    bio: 'Dedicated to providing comprehensive healthcare for children from birth to adolescence.',
-    fee: 45,
-    availableTime: ['01:00 PM', '04:30 PM', '06:15 PM'],
-  },
-  {
-    id: 4,
-    name: 'Dr. Robert Wilson',
-    specialty: 'Orthopedic',
-    experience: '10 years exp.',
-    rating: '4.7',
-    image: 'RW',
-    bio: 'Focuses on sports injuries, joint replacements, and spinal health.',
-    fee: 60,
-    availableTime: ['10:00 AM', '12:45 PM', '05:30 PM'],
-  },
-  {
-    id: 5,
-    name: 'Dr. Lisa Park',
-    specialty: 'Dermatologist',
-    experience: '7 years exp.',
-    rating: '4.9',
-    image: 'LP',
-    bio: 'Specializes in clinical and cosmetic dermatology, including skin cancer screening.',
-    fee: 55,
-    availableTime: ['11:00 AM', '01:30 PM', '04:00 PM'],
-  },
-  {
-    id: 6,
-    name: 'Dr. James Miller',
-    specialty: 'General Physician',
-    experience: '20 years exp.',
-    rating: '4.9',
-    image: 'JM',
-    bio: 'Providing holistic primary care and chronic disease management for families.',
-    fee: 40,
-    availableTime: ['08:30 AM', '12:00 PM', '03:30 PM'],
-  },
-];
-
 export default function AppointmentsPage() {
-  const [bookedAppointments, setBookedAppointments] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [bookedAppointments, setBookedAppointments] = useState<Appointment[]>([]);
   const [isBooked, setIsBooked] = useState(false);
   
   // Filtering States
@@ -95,7 +36,7 @@ export default function AppointmentsPage() {
   const [selectedSpecialty, setSelectedSpecialty] = useState('All Specialties');
   
   // Booking Flow States
-  const [bookingDoctor, setBookingDoctor] = useState<any | null>(null);
+  const [bookingDoctor, setBookingDoctor] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [consultationType, setConsultationType] = useState<'In-Person' | 'Video'>('In-Person');
@@ -106,6 +47,9 @@ export default function AppointmentsPage() {
   const { user } = useAuth();
 
   useEffect(() => {
+    initSharedData();
+    setDoctors(getSharedDoctors());
+
     // Generate dates starting from today
     const dates = [];
     for (let i = 0; i < 7; i++) {
@@ -123,39 +67,30 @@ export default function AppointmentsPage() {
 
   useEffect(() => {
     if (!user?.email) return;
-    const storageKey = `apexCare_appointments_${user.email}`;
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      const allAppts = JSON.parse(saved);
-      setBookedAppointments(allAppts);
-    } else {
-      setBookedAppointments([]);
-    }
+    const allAppts = getSharedAppointments();
+    setBookedAppointments(allAppts.filter(a => a.patientEmail === user.email));
   }, [user]);
 
   const handleBook = () => {
-    if (bookingDoctor && selectedTime && selectedDate) {
-      const newAppointment = {
+    if (bookingDoctor && selectedTime && selectedDate && user?.email) {
+      const newAppointment: Appointment = {
         id: Date.now(),
-        patientEmail: user?.email,
+        patientEmail: user.email,
+        patientName: user.name || 'Unknown Patient',
         doctorId: bookingDoctor.id,
         doctorName: bookingDoctor.name,
         specialty: bookingDoctor.specialty,
         time: selectedTime,
         date: selectedDate,
-        type: consultationType
+        type: consultationType,
+        status: 'Upcoming'
       };
       
-      const storageKey = `apexCare_appointments_${user?.email}`;
-      const allSaved = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      const updatedGlobal = [...allSaved, newAppointment];
-      localStorage.setItem(storageKey, JSON.stringify(updatedGlobal));
-
-      const updatedLocal = [...bookedAppointments, newAppointment];
-      setBookedAppointments(updatedLocal);
+      saveSharedAppointment(newAppointment);
       
-      // Update latest appointment for dashboard
-      localStorage.setItem(`apexCare_lastAppt_${user?.email}`, JSON.stringify(newAppointment));
+      // Update local state
+      const allAppts = getSharedAppointments();
+      setBookedAppointments(allAppts.filter(a => a.patientEmail === user.email));
 
       setIsBooked(true);
       // Success message will be shown, then reset
@@ -169,20 +104,9 @@ export default function AppointmentsPage() {
 
   const handleCancelAppointment = (id: number) => {
     if (user?.email) {
-      const storageKey = `apexCare_appointments_${user.email}`;
-      const allSaved = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      const updatedGlobal = allSaved.filter((app: any) => app.id !== id);
-      localStorage.setItem(storageKey, JSON.stringify(updatedGlobal));
-
-      const updatedLocal = bookedAppointments.filter(app => app.id !== id);
-      setBookedAppointments(updatedLocal);
-
-      const latestKey = `apexCare_lastAppt_${user.email}`;
-      if (updatedLocal.length > 0) {
-        localStorage.setItem(latestKey, JSON.stringify(updatedLocal[updatedLocal.length - 1]));
-      } else {
-        localStorage.removeItem(latestKey);
-      }
+      deleteSharedAppointment(id);
+      const allAppts = getSharedAppointments();
+      setBookedAppointments(allAppts.filter(a => a.patientEmail === user.email));
     }
   };
 
