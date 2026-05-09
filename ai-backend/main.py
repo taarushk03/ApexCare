@@ -27,6 +27,8 @@ class SymptomResponse(BaseModel):
     secondaryConditions: list[ConditionProbability]
     cannotRuleOut: list[str]
     reasoning: str
+    riskJustification: str  # New field
+    bodyRegion: str        # New field (head, chest, abdomen, legs, arms, etc)
     warningSigns: list[str]
     recoveryTimeline: str
     recommendedTests: list[str]
@@ -37,6 +39,7 @@ class SymptomResponse(BaseModel):
     emergency: bool
     specialist: str
     summary: str
+    possibleCauses: list[str]  # New field
 
 KNOWN_SYMPTOMS = [
     "headache", "migraine", "nausea", "vomiting", "diarrhea", "fever", "chills", "sweating",
@@ -61,88 +64,148 @@ EMERGENCY_GLOBAL_KEYWORDS = [
 CATEGORIES = {
     "Cardiac Condition": {
         "keywords": ["heart", "palpitations", "left arm", "chest tightness", "chest pressure"],
-        "escalation_keywords": ["chest pain", "shortness of breath", "fainting", "sweating"],
+        "escalation_keywords": ["chest pain", "shortness of breath", "fainting", "sweating", "radiating pain"],
         "specialist": "Cardiologist",
         "base_severity": "High Risk",
         "base_urgency": "Urgent consultation recommended",
-        "actions": [
-            "Sit down and rest immediately.",
-            "Take prescribed heart medication if applicable.",
-            "Seek immediate medical evaluation.",
-            "Do not drive yourself to the hospital."
+        "body_region": "chest",
+        "causes": ["Myocardial strain", "Ischemic event", "Arrhythmia", "Chest wall inflammation"],
+        "specific_conditions": [
+            {"name": "Acute Coronary Syndrome", "trigger": ["chest pain", "sweating"], "conf": 85},
+            {"name": "Paroxysmal Tachycardia", "trigger": ["palpitations", "dizziness"], "conf": 70},
+            {"name": "Anginal Presentation", "trigger": ["chest tightness"], "conf": 65}
         ],
-        "tests": ["ECG / EKG", "Troponin Blood Test", "Stress Test"],
-        "recovery": "Varies by diagnosis",
-        "warnings": ["Pain spreads to jaw or neck", "Nausea or cold sweat", "Sudden weakness"],
-        "cannot_rule_out_base": ["Angina", "Myocardial Ischemia"]
+        "actions": [
+            "Sit down and rest in a comfortable position immediately.",
+            "Take aspirin if prescribed and not allergic.",
+            "Monitor for pain spreading to jaw or left arm.",
+            "Contact emergency services if pain persists beyond 5 minutes."
+        ],
+        "tests": ["12-Lead ECG (Electrocardiogram)", "Cardiac Troponin T-Test", "Echocardiogram"],
+        "recovery": "Requires specialized clinical monitoring",
+        "warnings": ["Pain spreading to jaw or left arm", "Sudden cold sweat and nausea", "Fainting or severe lightheadedness"],
+        "cannot_rule_out_base": ["Myocardial Infarction", "Angina Pectoris", "Pericarditis"]
     },
     "Orthopedic Injury": {
         "keywords": ["twisted", "sprain", "swelling", "pain", "fell", "hit", "injury", "ankle", "knee", "wrist", "shoulder"],
-        "escalation_keywords": ["broken", "fracture", "heard a crack", "bone sticking out", "cannot walk", "deformity", "snap", "unable to walk"],
+        "escalation_keywords": ["broken", "fracture", "heard a crack", "bone sticking out", "cannot walk", "deformity", "snap", "unable to walk", "pop"],
         "specialist": "Orthopedic Surgeon",
         "base_severity": "Moderate",
         "base_urgency": "Visit doctor in 24 hours",
-        "actions": [
-            "Immobilize the affected limb.",
-            "Apply ice for 15-20 minutes every hour.",
-            "Elevate the injury above heart level.",
-            "Avoid putting weight on the area."
+        "body_region": "extremities",
+        "causes": ["Ligament strain", "Joint sprain", "Soft tissue trauma", "Possible fracture pattern"],
+        "specific_conditions": [
+            {"name": "Possible Ankle Sprain", "trigger": ["ankle", "twisted"], "conf": 82},
+            {"name": "Suspected Ligament Strain", "trigger": ["pop", "instability", "swelling"], "conf": 75},
+            {"name": "Possible Fracture Pattern", "trigger": ["crack", "snap", "deformity"], "conf": 85},
+            {"name": "Acute Trauma-Related Injury", "trigger": ["fell", "hit"], "conf": 65}
         ],
-        "tests": ["X-ray", "MRI for ligament assessment", "CT Scan if complex"],
-        "recovery": "2-6 weeks depending on severity",
-        "warnings": ["Numbness or tingling develops", "Severe bruising spreads", "Limb becomes cold or pale", "Unable to stand"],
-        "cannot_rule_out_base": ["Ligament Tear", "Stress Fracture"]
+        "actions": [
+            "Implement R.I.C.E: Rest, Ice, Compression, Elevation.",
+            "Avoid all weight-bearing on the affected limb.",
+            "Apply a temporary splint or compression wrap.",
+            "Elevate the limb above the level of the heart."
+        ],
+        "tests": ["Digital X-Ray", "MRI if ligament damage suspected", "Physical Examination"],
+        "recovery": "Mild: 1-3 weeks | Moderate: 4-8 weeks",
+        "warnings": ["Inability to bear weight", "Visible deformity or misalignment", "Numbness in the extremity", "Rapidly increasing swelling"],
+        "cannot_rule_out_base": ["Complex Fracture", "High Ankle Sprain", "Tendon Rupture"]
     },
     "Neurological / Migraine": {
         "keywords": ["headache", "migraine", "aura", "throbbing head", "pounding"],
-        "escalation_keywords": ["light sensitivity", "vomiting", "sound sensitivity", "confusion", "slurred speech"],
+        "escalation_keywords": ["light sensitivity", "vomiting", "sound sensitivity", "confusion", "slurred speech", "vision loss"],
         "specialist": "Neurologist",
         "base_severity": "Mild",
         "base_urgency": "Monitor at home",
-        "actions": [
-            "Rest in a quiet, dark room.",
-            "Apply a cold compress to the forehead.",
-            "Hydrate and avoid bright screens.",
-            "Take over-the-counter pain relievers."
+        "body_region": "head",
+        "causes": ["Migraine trigger", "Vascular changes", "Tension", "Neuralgic pain"],
+        "specific_conditions": [
+            {"name": "Migraine Episode", "trigger": ["vision", "light", "throbbing"], "conf": 88},
+            {"name": "Acute Tension Headache", "trigger": ["pounding", "stress"], "conf": 70},
+            {"name": "Cluster Headache Presentation", "trigger": ["eye", "sharp"], "conf": 60}
         ],
-        "tests": ["MRI / CT Brain", "Neurological Exam"],
-        "recovery": "12-48 hours per episode",
-        "warnings": ["Sudden vision changes", "Severe stiff neck", "Weakness on one side of body"],
-        "cannot_rule_out_base": ["Tension Headache", "Cluster Headache"]
+        "actions": [
+            "Rest in a quiet, dark, and cool environment.",
+            "Prioritize hydration with water and electrolytes.",
+            "Apply a cool compress to the forehead or neck.",
+            "Avoid bright screens and loud noises."
+        ],
+        "tests": ["Neurological Evaluation", "Vision Assessment", "Brain MRI (if persistent)"],
+        "recovery": "Several hours to 48 hours",
+        "warnings": ["Sudden 'thunderclap' headache", "Confusion or speech difficulty", "Weakness on one side", "Vision loss"],
+        "cannot_rule_out_base": ["Chronic Migraine", "Secondary Headache", "Intracranial Pressure Issue"]
+    },
+    "Fever / Viral Syndrome": {
+        "keywords": ["fever", "chills", "aches", "flu", "virus", "sweating", "tired"],
+        "escalation_keywords": ["high fever", "confusion", "stiff neck", "difficulty breathing", "persistent vomiting"],
+        "specialist": "General Physician",
+        "base_severity": "Mild",
+        "base_urgency": "Monitor at home",
+        "body_region": "systemic",
+        "causes": ["Viral infection", "Immune response", "Systemic inflammation", "Seasonal illness"],
+        "specific_conditions": [
+            {"name": "Viral Syndrome", "trigger": ["fever", "aches"], "conf": 85},
+            {"name": "Influenza-Like Illness", "trigger": ["flu", "chills"], "conf": 80},
+            {"name": "Acute Febrile Illness", "trigger": ["fever", "sweating"], "conf": 75}
+        ],
+        "actions": [
+            "Maintain strict hydration with plenty of fluids.",
+            "Prioritize bed rest and limit physical activity.",
+            "Monitor body temperature every 4-6 hours.",
+            "Use antipyretics for fever-related discomfort."
+        ],
+        "tests": ["Rapid Viral Panel", "Complete Blood Count (CBC)", "Temperature Log"],
+        "recovery": "3–10 days depending on strain",
+        "warnings": ["Fever persistently above 103°F", "Stiff neck and severe headache", "Difficulty breathing", "Extreme lethargy"],
+        "cannot_rule_out_base": ["Bacterial Infection", "Common Cold", "Post-Viral Fatigue"]
     },
     "Respiratory Condition": {
         "keywords": ["cough", "congestion", "runny nose", "phlegm", "wheezing"],
-        "escalation_keywords": ["difficulty breathing", "shortness of breath", "blue lips", "high fever"],
+        "escalation_keywords": ["difficulty breathing", "shortness of breath", "blue lips", "high fever", "chest pain while breathing"],
         "specialist": "Pulmonologist",
         "base_severity": "Mild",
         "base_urgency": "Monitor at home",
-        "actions": [
-            "Sit upright to ease breathing.",
-            "Use a humidifier or steam.",
-            "Monitor oxygen levels if possible.",
-            "Rest and increase fluids."
+        "body_region": "chest",
+        "causes": ["Respiratory inflammation", "Viral shedding", "Airway hypersensitivity", "Mucosal congestion"],
+        "specific_conditions": [
+            {"name": "Acute Bronchitis", "trigger": ["cough", "phlegm"], "conf": 80},
+            {"name": "Reactive Airway Flare-up", "trigger": ["wheezing", "tightness"], "conf": 75},
+            {"name": "Upper Respiratory Tract Infection", "trigger": ["runny nose", "sore throat"], "conf": 85}
         ],
-        "tests": ["Chest X-ray", "Pulmonary Function Test", "Blood Oxygen Test"],
-        "recovery": "1-3 weeks",
-        "warnings": ["Breathing worsens significantly", "High fever persists", "Coughing up blood"],
-        "cannot_rule_out_base": ["Bronchitis", "Pneumonia"]
+        "actions": [
+            "Stay hydrated to thin mucus secretions.",
+            "Use a humidifier or warm steam inhalation.",
+            "Maintain an upright position for better airflow.",
+            "Monitor oxygen levels if a pulse-ox is available."
+        ],
+        "tests": ["Chest X-Ray (PA/Lateral)", "Spirometry", "Blood Oxygen Analysis"],
+        "recovery": "7–14 days",
+        "warnings": ["Blue tint to lips or nails", "Gasping for air (air hunger)", "High fever", "Coughing up blood"],
+        "cannot_rule_out_base": ["Pneumonia", "Pleurisy", "Bronchiolitis"]
     },
     "Dermatological Issue": {
         "keywords": ["rash", "itching", "redness", "skin", "dryness"],
-        "escalation_keywords": ["hives", "swelling face", "swollen lips", "anaphylaxis", "blistering"],
+        "escalation_keywords": ["hives", "swelling face", "swollen lips", "anaphylaxis", "blistering", "spreading rapidly"],
         "specialist": "Dermatologist",
         "base_severity": "Mild",
         "base_urgency": "Monitor at home",
-        "actions": [
-            "Apply soothing lotion or hydrocortisone.",
-            "Avoid scratching the area.",
-            "Identify and remove potential allergens.",
-            "Take oral antihistamines."
+        "body_region": "skin",
+        "causes": ["Allergic reaction", "Contact irritant", "Inflammatory skin response", "Fungal or viral rash"],
+        "specific_conditions": [
+            {"name": "Contact Dermatitis", "trigger": ["rash", "touch"], "conf": 82},
+            {"name": "Acute Urticaria (Hives)", "trigger": ["itching", "bumps"], "conf": 78},
+            {"name": "Eczematous Flare", "trigger": ["dryness", "chronic"], "conf": 70}
         ],
-        "tests": ["Skin Biopsy", "Allergy Patch Test"],
-        "recovery": "3-10 days",
-        "warnings": ["Rash spreads rapidly", "Difficulty swallowing", "Blisters start oozing"],
-        "cannot_rule_out_base": ["Contact Dermatitis", "Eczema Flare-up"]
+        "actions": [
+            "Apply soothing calamine or hydrocortisone.",
+            "Identify and remove potential allergens or irritants.",
+            "Take an antihistamine for persistent itching.",
+            "Avoid hot water or harsh soaps on the area."
+        ],
+        "tests": ["Allergy Patch Testing", "Skin Biopsy (if needed)", "Dermatoscopic Exam"],
+        "recovery": "3–10 days",
+        "warnings": ["Swelling of face, lips, or tongue", "Difficulty swallowing or speaking", "Rapidly spreading purple or blistering rash"],
+        "cannot_rule_out_base": ["Anaphylaxis", "Atopic Dermatitis", "Skin Infection"]
     }
 }
 
@@ -162,18 +225,18 @@ async def analyze_symptoms(request: SymptomRequest):
     
     if len(text.split()) < 3 and not extracted_sym and not extracted_bp:
         return SymptomResponse(
-            condition="Unclear Input", confidence=0,
-            primaryCondition=ConditionProbability(name="Unclear Input", confidence=0),
-            secondaryConditions=[], cannotRuleOut=["Nonsense Input"],
-            reasoning="The provided description is too brief to perform a reliable triage. Please describe your symptoms and any relevant body parts.",
-            warningSigns=["Sudden worsening of health", "New acute pain"],
-            recoveryTimeline="N/A", recommendedTests=["Initial physician consultation"],
-            urgency="Monitor at home", severity="Mild", extractedSymptoms=[],
-            recommendedActions=["Submit a more detailed description.", "Mention when symptoms started."],
-            emergency=False, specialist="General Physician", summary="Insufficient data for analysis."
+            condition="Inconclusive Analysis", confidence=0,
+            primaryCondition=ConditionProbability(name="Inconclusive Analysis", confidence=0),
+            secondaryConditions=[], cannotRuleOut=[],
+            reasoning="Insufficient data for a clinical correlation.",
+            riskJustification="Risk cannot be assessed due to lack of descriptive details.",
+            bodyRegion="systemic", warningSigns=[], recoveryTimeline="Unknown",
+            recommendedTests=["Professional consultation required"], urgency="Indeterminate",
+            severity="Indeterminate", extractedSymptoms=[], recommendedActions=["Provide more details on symptoms and onset."],
+            emergency=False, specialist="General Practitioner", summary="Detailed report required.",
+            possibleCauses=[]
         )
 
-    # Global emergency check
     is_critical_emergency = any(kw in text for kw in EMERGENCY_GLOBAL_KEYWORDS)
     
     category_matches = []
@@ -182,96 +245,78 @@ async def analyze_symptoms(request: SymptomRequest):
         escalation_hits = sum(1 for kw in data["escalation_keywords"] if re.search(r'\b' + re.escape(kw) + r'\b', text))
         
         if base_hits > 0 or escalation_hits > 0:
-            score = (base_hits * 1) + (escalation_hits * 3)
-            # Body part boost
-            if name == "Orthopedic Injury" and any(bp in ["ankle", "knee", "wrist", "shoulder", "bone"] for bp in extracted_bp):
-                score += 2
-            if name == "Cardiac Condition" and "chest" in extracted_bp:
-                score += 2
-            if name == "Neurological / Migraine" and "head" in extracted_bp:
-                score += 1
-                
+            score = (base_hits * 2) + (escalation_hits * 5)
             category_matches.append({"name": name, "score": score, "data": data, "escalated": escalation_hits > 0})
 
     category_matches.sort(key=lambda x: x["score"], reverse=True)
     
     if not category_matches:
         return SymptomResponse(
-            condition="Atypical Presentation", confidence=40,
-            primaryCondition=ConditionProbability(name="Atypical Presentation", confidence=40),
-            secondaryConditions=[], cannotRuleOut=["Various rare conditions"],
-            reasoning="Your symptoms do not match our standard diagnostic categories. A professional evaluation is necessary.",
-            warningSigns=["New symptoms emerge", "Existing symptoms worsen"],
-            recoveryTimeline="Requires diagnosis", recommendedTests=["Full medical exam"],
-            urgency="Visit doctor in 24 hours", severity="Moderate",
-            extractedSymptoms=list(set(extracted_sym + extracted_bp)),
-            recommendedActions=["Keep a log of symptoms.", "Avoid heavy activity."],
-            emergency=False, specialist="General Physician", summary="Professional consultation recommended."
+            condition="Non-Specific Presentation", confidence=40,
+            primaryCondition=ConditionProbability(name="Non-Specific Presentation", confidence=40),
+            secondaryConditions=[], cannotRuleOut=["Unidentified Pathology"],
+            reasoning="Symptoms do not align with common diagnostic profiles.",
+            riskJustification="Severity remains low pending further specialized review.",
+            bodyRegion="systemic", warningSigns=["Worsening symptoms"], recoveryTimeline="Pending review",
+            recommendedTests=["Full physical examination"], urgency="Schedule visit",
+            severity="Moderate", extractedSymptoms=list(set(extracted_sym + extracted_bp)),
+            recommendedActions=["Keep a symptom log."], emergency=False, specialist="General Physician",
+            summary="Atypical symptom presentation.", possibleCauses=["Non-clinical stress", "Atypical onset"]
         )
 
     primary = category_matches[0]
     data = primary["data"]
     is_escalated = primary["escalated"] or is_critical_emergency
     
-    primary_conf = min(60 + (primary["score"] * 10), 96)
-    secondary_list = []
-    for sec in category_matches[1:3]:
-        sec_conf = min(40 + (sec["score"] * 8), primary_conf - 5)
-        secondary_list.append(ConditionProbability(name=sec["name"], confidence=sec_conf))
-        
+    condition_name = primary["name"]
+    for sc in data["specific_conditions"]:
+        if any(kw in text for kw in sc["trigger"]):
+            condition_name = sc["name"]
+            break
+            
+    primary_conf = min(75 + (primary["score"] * 5), 98)
     severity = data["base_severity"]
     urgency = data["base_urgency"]
     emergency = is_critical_emergency
     
-    cannot_rule_out = data["cannot_rule_out_base"].copy()
+    # Severity Justification
     if is_escalated:
         severity = "High Risk"
         urgency = "Urgent consultation recommended"
-        if primary["name"] == "Orthopedic Injury":
-            cannot_rule_out.insert(0, "Fracture")
-            if any(kw in text for kw in ["bone sticking out", "deformity"]):
-                severity = "Critical"
-                urgency = "Emergency care immediately"
-                emergency = True
-        if primary["name"] == "Cardiac Condition" or "chest pain" in text:
-            severity = "Critical"
-            urgency = "Emergency care immediately"
-            emergency = True
-            
-    # Natural Reasoning
-    sym_desc = f"the {', '.join(extracted_sym[:3])}" if extracted_sym else "these symptoms"
-    bp_desc = f" in your {', '.join(extracted_bp[:2])}" if extracted_bp else ""
-    
-    if primary["name"] == "Orthopedic Injury":
-        reasoning = f"Swelling or pain{bp_desc} after a potential trauma or twisting motion suggests a sprain or ligament injury. "
-        if is_escalated:
-            reasoning += "However, your report of severe pain or inability to bear weight indicates a high likelihood of a fracture that requires imaging."
-    elif primary["name"] == "Cardiac Condition":
-        reasoning = f"The discomfort you're feeling{bp_desc} matches patterns associated with cardiac strain. "
-        if is_escalated:
-            reasoning += "Reported shortness of breath or radiating pain significantly increases the clinical urgency for evaluation."
+        justification = f"High-risk classification due to {', '.join(extracted_sym[:2])} and escalation markers."
+        if primary["name"] == "Orthopedic Injury" and "swelling" in text:
+            justification = "High-risk classification due to traumatic swelling and potential mobility impairment."
     else:
-        reasoning = f"Your report of {sym_desc}{bp_desc} aligns with common presentations of {primary['name']}. "
-        if is_escalated:
-            reasoning += "The presence of secondary symptoms suggests a more acute episode requiring professional monitoring."
+        justification = f"Moderate severity based on the reported {primary['name'].lower()} presentation."
 
-    all_ext = list(set(extracted_sym + extracted_bp))
-    
+    if emergency:
+        severity = "Critical"
+        urgency = "Emergency care immediately"
+        justification = "Critical emergency status declared due to acute clinical distress markers."
+
+    # Clinical Summary
+    summary_text = f"Reported {', '.join(extracted_sym[:2])} in the {primary['name'].lower()} context may indicate {condition_name.lower()}."
+    if "swelling" in text and "twisted" in text:
+        summary_text = f"Swelling after a twisting injury suggests potential ligament damage or soft tissue trauma requiring evaluation."
+
     return SymptomResponse(
-        condition=primary["name"],
+        condition=condition_name,
         confidence=primary_conf,
-        primaryCondition=ConditionProbability(name=primary["name"], confidence=primary_conf),
-        secondaryConditions=secondary_list,
-        cannotRuleOut=cannot_rule_out[:3],
-        reasoning=reasoning,
+        primaryCondition=ConditionProbability(name=condition_name, confidence=primary_conf),
+        secondaryConditions=[ConditionProbability(name=sec["name"], confidence=primary_conf-15) for sec in data["specific_conditions"] if sec["name"] != condition_name][:2],
+        cannotRuleOut=data["cannot_rule_out_base"][:3],
+        reasoning=f"Your presentation of {', '.join(extracted_sym[:2])} aligns with {condition_name}.",
+        riskJustification=justification,
+        bodyRegion=primary["body_region"],
         warningSigns=data["warnings"],
         recoveryTimeline=data["recovery"],
         recommendedTests=data["tests"],
         urgency=urgency,
         severity=severity,
-        extractedSymptoms=all_ext,
+        extractedSymptoms=list(set(extracted_sym + extracted_bp)),
         recommendedActions=data["actions"],
         emergency=emergency,
         specialist=data["specialist"],
-        summary=f"Analysis suggests {primary['name']}. Please follow the triage guidance provided."
+        summary=summary_text,
+        possibleCauses=data["causes"]
     )
