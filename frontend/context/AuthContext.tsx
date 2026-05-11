@@ -4,8 +4,12 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface User {
-  name: string;
+  id?: number;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
   email: string;
+  role?: string;
   password?: string;
 }
 
@@ -13,7 +17,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (userData: User) => { success: boolean; error?: string };
+  register: (userData: User) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -39,40 +43,75 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
-    const usersJson = localStorage.getItem('users');
-    const users: User[] = usersJson ? JSON.parse(usersJson) : [];
-    
-    const foundUser = users.find(u => u.email === email);
-    
-    if (!foundUser) {
-      return { success: false, error: 'User account not found' };
-    }
-    
-    if (foundUser.password !== password) {
-      return { success: false, error: 'Invalid security password' };
-    }
+    try {
+      const response = await fetch('http://localhost:3001/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
 
-    const { password: _, ...userWithoutPassword } = foundUser;
-    setUser(userWithoutPassword);
-    setIsAuthenticated(true);
-    localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
-    localStorage.setItem('isAuthenticated', 'true');
-    router.push('/dashboard');
-    return { success: true };
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.message || 'Login failed',
+        };
+      }
+
+      setUser(data.user);
+      setIsAuthenticated(true);
+
+      localStorage.setItem('currentUser', JSON.stringify(data.user));
+      localStorage.setItem('isAuthenticated', 'true');
+
+      router.push('/dashboard');
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Server connection failed',
+      };
+    }
   };
 
-  const register = (userData: User) => {
-    const usersJson = localStorage.getItem('users');
-    const users: User[] = usersJson ? JSON.parse(usersJson) : [];
-    
-    if (users.find(u => u.email === userData.email)) {
-      return { success: false, error: 'User with this email already exists' };
+  const register = async (userData: User) => {
+    try {
+      const response = await fetch('http://localhost:3001/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userData.email,
+          password: userData.password,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.message || 'Registration failed',
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Server connection failed',
+      };
     }
-    
-    users.push(userData);
-    localStorage.setItem('users', JSON.stringify(users));
-    
-    return { success: true };
   };
 
   const logout = () => {

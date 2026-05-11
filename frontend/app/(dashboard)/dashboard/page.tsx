@@ -48,7 +48,7 @@ export default function DashboardPage() {
       setIsModalOpen(false);
     }
   };
-  
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning';
@@ -70,7 +70,7 @@ export default function DashboardPage() {
       href: '/appointments',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600">
-          <path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/>
+          <path d="M8 2v4" /><path d="M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18" /><path d="m9 16 2 2 4-4" />
         </svg>
       ),
       color: 'bg-blue-50',
@@ -81,7 +81,7 @@ export default function DashboardPage() {
       href: '/ai-check',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">
-          <path d="M12 2v10"/><path d="M18.4 6.9c.8.8 1.3 1.9 1.5 3.1.2 1.1 0 2.2-.4 3.1a6.4 6.4 0 0 1-5.3 4.4 6.4 6.4 0 0 1-5.3-4.4c-.4-.9-.6-2-.4-3.1.2-1.2.7-2.3 1.5-3.1"/><path d="m9 15 3-3 3 3"/>
+          <path d="M12 2v10" /><path d="M18.4 6.9c.8.8 1.3 1.9 1.5 3.1.2 1.1 0 2.2-.4 3.1a6.4 6.4 0 0 1-5.3 4.4 6.4 6.4 0 0 1-5.3-4.4c-.4-.9-.6-2-.4-3.1.2-1.2.7-2.3 1.5-3.1" /><path d="m9 15 3-3 3 3" />
         </svg>
       ),
       color: 'bg-green-50',
@@ -92,7 +92,7 @@ export default function DashboardPage() {
       href: '/reports',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-600">
-          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>
+          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><path d="M16 13H8" /><path d="M16 17H8" /><path d="M10 9H8" />
         </svg>
       ),
       color: 'bg-purple-50',
@@ -103,7 +103,7 @@ export default function DashboardPage() {
       href: '/insurance',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" />
         </svg>
       ),
       color: 'bg-amber-50',
@@ -115,15 +115,15 @@ export default function DashboardPage() {
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            {getGreeting()}, {user?.name || 'John'}
+            {getGreeting()}, {user?.firstName || user?.name || 'John'}
           </h1>
           <p className="text-slate-500 mt-2">Here is your health overview for today.</p>
         </div>
-        
+
         <div className="bg-blue-600 text-white p-6 rounded-[2rem] shadow-xl shadow-blue-100 flex items-center space-x-6 max-w-md w-full border border-blue-400/20">
           <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-sm">
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/>
+              <path d="M8 2v4" /><path d="M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18" /><path d="m9 16 2 2 4-4" />
             </svg>
           </div>
           <div className="flex-1">
@@ -132,7 +132,7 @@ export default function DashboardPage() {
               <>
                 <h3 className="font-bold text-lg leading-tight">{upcomingAppointment.doctorName}</h3>
                 <p className="text-xs text-blue-100/80 mt-0.5">
-                    {upcomingAppointment.specialty} • {upcomingAppointment.date}
+                  {upcomingAppointment.specialty} • {upcomingAppointment.date}
                 </p>
               </>
             ) : (
@@ -141,7 +141,7 @@ export default function DashboardPage() {
           </div>
           <Link href="/appointments">
             <button className="bg-white text-blue-600 h-10 w-10 flex items-center justify-center rounded-2xl shadow-lg hover:scale-110 transition-transform">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
             </button>
           </Link>
         </div>
@@ -149,14 +149,14 @@ export default function DashboardPage() {
 
       <section className="relative">
         <div className="flex justify-between items-center mb-6">
-           <h2 className="text-xl font-black text-slate-800 uppercase tracking-widest text-xs">Your Health Metrics</h2>
-           <button 
-             onClick={() => setIsModalOpen(true)}
-             className="bg-white hover:bg-slate-50 text-blue-600 font-bold py-2 px-5 rounded-2xl text-xs transition-all border-2 border-slate-100 shadow-sm flex items-center space-x-2"
-           >
-             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-             <span>Log Data</span>
-           </button>
+          <h2 className="text-xl font-black text-slate-800 uppercase tracking-widest text-xs">Your Health Metrics</h2>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-white hover:bg-slate-50 text-blue-600 font-bold py-2 px-5 rounded-2xl text-xs transition-all border-2 border-slate-100 shadow-sm flex items-center space-x-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
+            <span>Log Data</span>
+          </button>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {healthStats.map((stat) => (
@@ -181,7 +181,7 @@ export default function DashboardPage() {
               <div className="mt-6 flex items-center text-blue-600 font-bold text-xs uppercase tracking-widest group-hover:translate-x-1 transition-transform">
                 Explore
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
-                  <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                  <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
                 </svg>
               </div>
             </Card>
@@ -220,7 +220,7 @@ export default function DashboardPage() {
                 <div className="flex items-center space-x-4">
                   <div className="p-2.5 rounded-xl bg-slate-50 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/>
+                      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" />
                     </svg>
                   </div>
                   <span className="text-sm font-bold text-slate-700 group-hover:text-blue-900 transition-colors">{report}</span>
@@ -234,42 +234,42 @@ export default function DashboardPage() {
           </Card>
         </div>
       </section>
-      
+
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-white rounded-[2.5rem] p-10 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-300 border-4 border-slate-50">
             <div className="flex items-center space-x-4 mb-8">
               <div className="bg-blue-50 p-3 rounded-2xl text-blue-600">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 2a2 2 0 0 0-2 2v5H4a2 2 0 0 0-2 2v2c0 1.1.9 2 2 2h5v5c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-5V4a2 2 0 0 0-2-2h-2z"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 2a2 2 0 0 0-2 2v5H4a2 2 0 0 0-2 2v2c0 1.1.9 2 2 2h5v5c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-5V4a2 2 0 0 0-2-2h-2z" /></svg>
               </div>
               <h3 className="text-2xl font-black text-slate-800 tracking-tight">Log Health</h3>
             </div>
-            
+
             <div className="space-y-6 mb-10">
-              <Input 
-                 label="Blood Pressure" 
-                 placeholder="e.g. 120/80" 
-                 value={formData.bp}
-                 onChange={(e) => setFormData({...formData, bp: e.target.value})}
+              <Input
+                label="Blood Pressure"
+                placeholder="e.g. 120/80"
+                value={formData.bp}
+                onChange={(e) => setFormData({ ...formData, bp: e.target.value })}
               />
-              <Input 
-                 label="Temperature (°F)" 
-                 placeholder="e.g. 98.6" 
-                 type="number"
-                 value={formData.temp}
-                 onChange={(e) => setFormData({...formData, temp: e.target.value})}
+              <Input
+                label="Temperature (°F)"
+                placeholder="e.g. 98.6"
+                type="number"
+                value={formData.temp}
+                onChange={(e) => setFormData({ ...formData, temp: e.target.value })}
               />
-              <Input 
-                 label="Glucose (mg/dL)" 
-                 placeholder="e.g. 95" 
-                 type="number"
-                 value={formData.glucose}
-                 onChange={(e) => setFormData({...formData, glucose: e.target.value})}
+              <Input
+                label="Glucose (mg/dL)"
+                placeholder="e.g. 95"
+                type="number"
+                value={formData.glucose}
+                onChange={(e) => setFormData({ ...formData, glucose: e.target.value })}
               />
             </div>
             <div className="flex space-x-4">
-               <Button variant="outline" fullWidth size="lg" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-               <Button fullWidth size="lg" onClick={handleSaveHealthData} className="shadow-lg shadow-blue-100">Save</Button>
+              <Button variant="outline" fullWidth size="lg" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+              <Button fullWidth size="lg" onClick={handleSaveHealthData} className="shadow-lg shadow-blue-100">Save</Button>
             </div>
           </div>
         </div>

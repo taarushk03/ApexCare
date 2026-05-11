@@ -42,7 +42,7 @@ export default function RegisterPage() {
     const newErrors: Record<string, string> = {};
 
     if (!formData.firstName.trim()) newErrors.firstName = 'Legal first name is required';
-    
+
     if (!formData.email.trim()) {
       newErrors.email = 'Registered email is required';
     }
@@ -61,11 +61,11 @@ export default function RegisterPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let { name, value } = e.target;
-    
+
     if (name === 'firstName' || name === 'lastName') {
       value = value.charAt(0).toUpperCase() + value.slice(1);
     }
-    
+
     setFormData(prev => ({ ...prev, [name]: value }));
 
     if (errors[name] && name !== 'email') {
@@ -88,13 +88,14 @@ export default function RegisterPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.firstName.trim() || !formData.email.trim() || !formData.password.trim() || !isTermsAgreed) return;
 
     if (validateForm()) {
-      const result = register({ 
-        name: `${formData.firstName} ${formData.lastName}`.trim(), 
+      const result = await register({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
         password: formData.password
       });
@@ -108,11 +109,11 @@ export default function RegisterPage() {
   };
 
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
-  const isFormValid = formData.firstName.trim().length > 0 && 
-                      isEmailValid && 
-                      isPasswordValid && 
-                      formData.password === formData.confirmPassword && 
-                      isTermsAgreed;
+  const isFormValid = formData.firstName.trim().length > 0 &&
+    isEmailValid &&
+    isPasswordValid &&
+    formData.password === formData.confirmPassword &&
+    isTermsAgreed;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
@@ -124,7 +125,7 @@ export default function RegisterPage() {
             Join ApexCare to manage your healthcare journey
           </p>
         </div>
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -251,10 +252,10 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <Button 
-            type="submit" 
-            fullWidth 
-            size="lg" 
+          <Button
+            type="submit"
+            fullWidth
+            size="lg"
             disabled={!isFormValid}
             className={!isFormValid ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.98] transition-transform'}
           >

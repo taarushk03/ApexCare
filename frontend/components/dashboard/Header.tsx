@@ -24,12 +24,11 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     return titles[path] || 'ApexCare';
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase();
+  const getInitials = (firstName?: string, lastName?: string) => {
+    if (!firstName && !lastName) return 'JD';
+    const firstInitial = firstName ? firstName[0] : '';
+    const lastInitial = lastName ? lastName[0] : '';
+    return (firstInitial + lastInitial).toUpperCase() || 'JD';
   };
 
   return (
@@ -51,11 +50,13 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       <div className="flex items-center space-x-6">
         <div className="flex items-center space-x-3 bg-slate-50 p-1.5 pr-4 rounded-2xl border-2 border-transparent hover:border-slate-100 transition-all duration-300">
           <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-blue-100 ring-2 ring-white">
-            {user ? getInitials(user.name) : 'JD'}
+            {user ? getInitials(user.firstName, user.lastName) : 'JD'}
           </div>
           <div className="hidden sm:block text-left">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Welcome</p>
-            <p className="text-sm font-bold text-slate-800 leading-tight mt-0.5">{user?.name || 'Guest User'}</p>
+            <p className="text-sm font-bold text-slate-800 leading-tight mt-0.5">
+              {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'Guest User'}
+            </p>
           </div>
         </div>
       </div>
