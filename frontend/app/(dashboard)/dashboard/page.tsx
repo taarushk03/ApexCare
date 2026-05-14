@@ -15,30 +15,51 @@ export default function DashboardPage() {
   const [formData, setFormData] = useState({ bp: '', temp: '', glucose: '' });
 
   useEffect(() => {
-    if (!user?.email) return;
+    if (!user?.id) return;
 
-    const latestKey = `apexCare_lastAppt_${user.email}`;
-    const savedLastAppt = localStorage.getItem(latestKey);
-    if (savedLastAppt) {
-      setUpcomingAppointment(JSON.parse(savedLastAppt));
-    } else {
-      setUpcomingAppointment(null);
-    }
+    const fetchDashboardData = async () => {
+      try {
+        const response = await fetch(`http://localhost:3001/appointments/patient/${user.id}`);
+        const data = await response.json();
+        
+        // Find nearest upcoming appointment (Pending, Confirmed, or In Progress)
+        const upcoming = data
+          .filter((a: any) => a.status === 'Pending' || a.status === 'Confirmed' || a.status === 'In Progress')
+          .sort((a: any, b: any) => new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime())[0];
 
-    const savedHealth = localStorage.getItem(`apexCare_health_metrics_${user.email}`);
-    if (savedHealth) {
-      const parsedHealth = JSON.parse(savedHealth);
-      setHealthData(parsedHealth);
-      setFormData(parsedHealth);
-    }
-
-    const savedPhysical = localStorage.getItem(`apexCare_physicalData_${user.email}`);
-    if (savedPhysical) {
-      const data = JSON.parse(savedPhysical);
-      if (data.height && data.weight) {
-        setBmi((parseFloat(data.weight) / Math.pow(parseFloat(data.height) / 100, 2)).toFixed(1));
+        if (upcoming) {
+          setUpcomingAppointment({
+            id: upcoming.id,
+            doctorName: upcoming.doctor?.fullName || 'Dr. Specialist',
+            specialty: upcoming.doctor?.specialization || 'Healthcare',
+            date: new Date(upcoming.appointmentDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            status: upcoming.status
+          });
+        } else {
+          setUpcomingAppointment(null);
+        }
+      } catch (error) {
+        console.error('Failed to fetch dashboard appointments:', error);
       }
-    }
+
+      // Fetch Health Metrics
+      const savedHealth = localStorage.getItem(`apexCare_health_metrics_${user.email}`);
+      if (savedHealth) {
+        const parsedHealth = JSON.parse(savedHealth);
+        setHealthData(parsedHealth);
+        setFormData(parsedHealth);
+      }
+
+      const savedPhysical = localStorage.getItem(`apexCare_physicalData_${user.email}`);
+      if (savedPhysical) {
+        const data = JSON.parse(savedPhysical);
+        if (data.height && data.weight) {
+          setBmi((parseFloat(data.weight) / Math.pow(parseFloat(data.height) / 100, 2)).toFixed(1));
+        }
+      }
+    };
+
+    fetchDashboardData();
   }, [user]);
 
   const handleSaveHealthData = () => {

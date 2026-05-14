@@ -44,11 +44,39 @@ export default function AppointmentsPage() {
   // Generate 7-day rolling window for dates
   const [availableDates, setAvailableDates] = useState<{full: string, day: string, date: string}[]>([]);
 
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const { user } = useAuth();
 
   useEffect(() => {
-    initSharedData();
-    setDoctors(getSharedDoctors());
+    const fetchDoctors = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/doctors');
+        const data = await response.json();
+        
+        // Map backend Doctor entity to frontend Doctor interface
+        const mappedDoctors: Doctor[] = data.map((d: any) => ({
+          id: d.id,
+          name: d.fullName,
+          email: d.email,
+          specialty: d.specialization,
+          experience: `${d.experience} years exp.`,
+          rating: '4.9', // Default rating as backend doesn't have it yet
+          image: d.fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase(),
+          bio: d.bio || 'Professional healthcare provider at ApexCare.',
+          fee: 50, // Default fee
+          availableTime: ['09:00 AM', '11:30 AM', '02:00 PM', '04:30 PM'], // Default times
+          qualifications: d.qualifications,
+          clinicAddress: d.clinicLocation,
+          availableDays: d.availability || 'Mon - Fri'
+        }));
+        
+        setDoctors(mappedDoctors);
+      } catch (error) {
+        console.error('Failed to fetch doctors:', error);
+      }
+    };
+
+    fetchDoctors();
 
     // Generate dates starting from today
     const dates = [];
@@ -65,48 +93,137 @@ export default function AppointmentsPage() {
     setSelectedDate(dates[0].full);
   }, []);
 
-  useEffect(() => {
-    if (!user?.email) return;
-    const allAppts = getSharedAppointments();
-    setBookedAppointments(allAppts.filter(a => a.patientEmail === user.email));
-  }, [user]);
-
-  const handleBook = () => {
-    if (bookingDoctor && selectedTime && selectedDate && user?.email) {
-      const newAppointment: Appointment = {
-        id: Date.now(),
-        patientEmail: user.email,
-        patientName: user.name || 'Unknown Patient',
-        doctorId: bookingDoctor.id,
-        doctorName: bookingDoctor.name,
-        specialty: bookingDoctor.specialty,
-        time: selectedTime,
-        date: selectedDate,
-        type: consultationType,
-        status: 'Upcoming'
-      };
-      
-      saveSharedAppointment(newAppointment);
-      
-      // Update local state
-      const allAppts = getSharedAppointments();
-      setBookedAppointments(allAppts.filter(a => a.patientEmail === user.email));
-
-      setIsBooked(true);
-      // Success message will be shown, then reset
-      setTimeout(() => {
-        setIsBooked(false);
-        setBookingDoctor(null);
-        setSelectedTime(null);
-      }, 3000);
+  const fetchBookedSlots = async () => {
+    if (!bookingDoctor || !selectedDate) return;
+    try {
+      const response = await fetch(`http://localhost:3001/appointments/booked-slots?doctorId=${bookingDoctor.id}&date=${selectedDate}`);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setBookedSlots(data);
+      } else {
+        console.error('Booked slots response is not an array:', data);
+        setBookedSlots([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch booked slots:', error);
+      setBookedSlots([]);
     }
   };
 
-  const handleCancelAppointment = (id: number) => {
-    if (user?.email) {
-      deleteSharedAppointment(id);
-      const allAppts = getSharedAppointments();
-      setBookedAppointments(allAppts.filter(a => a.patientEmail === user.email));
+  useEffect(() => {
+    if (bookingDoctor && selectedDate) {
+      fetchBookedSlots();
+    }
+  }, [bookingDoctor, selectedDate]);
+
+  const [activeTab, setActiveTab] = useState<'Upcoming' | 'Past'>('Upcoming');
+
+  const fetchAppointments = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`http://localhost:3001/appointments/patient/${user.id}`);
+      const data = await response.json();
+      
+      const mappedAppts: Appointment[] = data.map((a: any) => ({
+        id: a.id,
+        patientEmail: user.email,
+        patientName: `${user.firstName} ${user.lastName}`.trim(),
+        doctorId: a.doctorId,
+        doctorName: a.doctor?.fullName || 'Dr. Specialist',
+        specialty: a.doctor?.specialization || 'Healthcare',
+        time: new Date(a.appointmentDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        date: new Date(a.appointmentDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        type: a.reason.includes('Video') ? 'Video' : 'In-Person',
+        status: a.status
+      }));
+      setBookedAppointments(mappedAppts);
+    } catch (error) {
+      console.error('Failed to fetch appointments:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id && doctors.length > 0) {
+      fetchAppointments();
+    }
+  }, [user, doctors]);
+
+  const handleBook = async () => {
+    console.log('--- Booking Attempt ---');
+    console.log('Doctor:', bookingDoctor);
+    console.log('Date:', selectedDate);
+    console.log('Time:', selectedTime);
+    console.log('Type:', consultationType);
+    console.log('User:', user);
+
+    if (bookingDoctor && selectedTime && selectedDate && user?.id) {
+      try {
+        // Combine date and time for backend
+        const appointmentDate = new Date(`${selectedDate} ${selectedTime}`);
+        console.log('Parsed Date:', appointmentDate);
+
+        // Prevent booking past dates
+        if (appointmentDate < new Date()) {
+          alert('Cannot book appointments in the past.');
+          return;
+        }
+
+        const response = await fetch('http://localhost:3001/appointments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            patientId: user.id,
+            doctorId: bookingDoctor.id,
+            appointmentDate: appointmentDate.toISOString(),
+            reason: `${consultationType} Consultation`,
+            status: 'Pending'
+          })
+        });
+
+        if (response.ok) {
+          console.log('Booking successful!');
+          setIsBooked(true);
+          fetchAppointments();
+          setTimeout(() => {
+            setIsBooked(false);
+            setBookingDoctor(null);
+            setSelectedTime(null);
+          }, 3000);
+        } else {
+          const errData = await response.json();
+          console.error('Booking failed:', errData);
+          alert(`Booking failed: ${errData.message}`);
+        }
+      } catch (error) {
+        console.error('Failed to book appointment:', error);
+      }
+    } else {
+      console.warn('Booking blocked by validation:', {
+        hasDoctor: !!bookingDoctor,
+        hasTime: !!selectedTime,
+        hasDate: !!selectedDate,
+        hasUserId: !!user?.id
+      });
+    }
+  };
+
+  const handleCancelAppointment = async (id: number) => {
+    console.log('--- Cancellation Request ---');
+    console.log('Appointment ID:', id);
+    
+    try {
+      const response = await fetch(`http://localhost:3001/appointments/${id}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        console.log('Cancellation successful for ID:', id);
+        fetchAppointments();
+      } else {
+        console.error('Cancellation failed for ID:', id);
+      }
+    } catch (error) {
+      console.error('Failed to cancel appointment:', error);
     }
   };
 
@@ -119,44 +236,107 @@ export default function AppointmentsPage() {
   return (
     <div className="space-y-8">
       {/* User's Current Appointments */}
-      {bookedAppointments.length > 0 && (
-        <section className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between mb-6">
+      <section className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
             <h2 className="text-xl font-bold text-slate-800 flex items-center">
-                <span className="bg-blue-100 text-blue-600 p-2.5 rounded-xl mr-3">
+                <span className="bg-blue-100 text-blue-600 p-2.5 rounded-xl mr-3 shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
                 </span>
-                Upcoming Appointments
+                Your Appointments
             </h2>
+            
+            <div className="flex bg-slate-100 p-1.5 rounded-2xl border-2 border-slate-50 w-fit">
+              {(['Upcoming', 'Past'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${
+                    activeTab === tab 
+                      ? 'bg-white text-blue-600 shadow-md scale-105' 
+                      : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {bookedAppointments.map((app) => (
-                <Card key={app.id} className="border-l-4 border-l-blue-600 shadow-sm hover:shadow-xl transition-all border border-slate-100 p-5">
-                    <div className="flex justify-between items-start mb-3">
-                    <div>
-                        <h4 className="font-black text-slate-800 tracking-tight">{app.doctorName}</h4>
-                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-0.5">{app.specialty}</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {bookedAppointments
+                .filter(app => {
+                  if (activeTab === 'Upcoming') {
+                    return app.status === 'Pending' || app.status === 'Confirmed' || app.status === 'In Progress';
+                  } else {
+                    return app.status === 'Completed' || app.status === 'Cancelled';
+                  }
+                })
+                .map((app) => (
+              <Card key={app.id} className={`shadow-sm hover:shadow-xl transition-all border border-slate-100 p-5 flex flex-col h-full ${
+                app.status === 'Cancelled' ? 'opacity-70 grayscale-[0.5]' : ''
+              }`}>
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1 mr-2">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-black text-slate-800 tracking-tight text-lg">{app.doctorName}</h4>
+                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-tight ${
+                            app.status === 'Completed' ? 'bg-emerald-100 text-emerald-600' :
+                            app.status === 'Cancelled' ? 'bg-red-100 text-red-600' :
+                            app.status === 'In Progress' ? 'bg-blue-600 text-white animate-pulse' :
+                            'bg-blue-100 text-blue-600'
+                          }`}>
+                            {app.status}
+                          </span>
+                        </div>
+                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{app.specialty}</p>
                     </div>
-                    <div className={`text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-tight ${app.type === 'Video' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
+                    <div className={`text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-tight shadow-sm shrink-0 ${app.type === 'Video' ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-600'}`}>
                         {app.type}
                     </div>
-                    </div>
-                    <div className="flex items-center text-xs text-slate-400 mb-6 font-bold bg-slate-50 px-3 py-1.5 rounded-lg w-fit">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        {app.date} • {app.time}
-                    </div>
-                    <button 
-                    onClick={() => handleCancelAppointment(app.id)}
-                    className="text-[10px] font-black text-red-500 hover:text-red-600 flex items-center uppercase tracking-widest transition-colors"
-                    >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                    Cancel Booking
-                    </button>
-                </Card>
-                ))}
-            </div>
-        </section>
-      )}
+                  </div>
+
+                  <div className="flex items-center text-xs text-slate-400 mb-6 font-bold bg-slate-50 px-3 py-2 rounded-xl w-full border border-slate-100/50">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-slate-300"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      {app.date} • <span className="text-slate-600 ml-1">{app.time}</span>
+                  </div>
+
+                  <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between">
+                    {(app.status === 'Pending' || app.status === 'Confirmed') ? (
+                      <button 
+                        onClick={() => handleCancelAppointment(app.id)}
+                        className="text-[10px] font-black text-red-500 hover:text-red-600 flex items-center uppercase tracking-widest transition-colors group"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5 group-hover:scale-110 transition-transform"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        Cancel Booking
+                      </button>
+                    ) : (
+                      <div className="flex items-center text-[10px] font-black text-slate-400 uppercase tracking-widest italic">
+                        No actions available
+                      </div>
+                    )}
+
+                    {app.status === 'Completed' && (
+                      <button className="text-[10px] font-black text-blue-600 hover:underline underline-offset-4 uppercase tracking-widest">
+                        View Summary
+                      </button>
+                    )}
+                  </div>
+              </Card>
+              ))}
+
+              {bookedAppointments.filter(app => {
+                if (activeTab === 'Upcoming') {
+                  return app.status === 'Pending' || app.status === 'Confirmed' || app.status === 'In Progress';
+                } else {
+                  return app.status === 'Completed' || app.status === 'Cancelled';
+                }
+              }).length === 0 && (
+                <div className="col-span-full py-16 text-center bg-slate-50/50 rounded-[2.5rem] border-4 border-dashed border-slate-100">
+                  <p className="text-slate-400 font-bold">No {activeTab.toLowerCase()} appointments found.</p>
+                </div>
+              )}
+          </div>
+      </section>
 
       {/* Filter Bar */}
       <section className="bg-white p-5 rounded-3xl shadow-sm border-2 border-slate-50 mb-8 flex flex-col md:flex-row gap-4">
@@ -303,20 +483,67 @@ export default function AppointmentsPage() {
                           <section>
                               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 px-1">Available Hours</h4>
                               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                  {bookingDoctor.availableTime.map((time: string) => (
-                                      <button
-                                        key={time}
-                                        onClick={() => setSelectedTime(time)}
-                                        className={`py-4 rounded-2xl font-black text-sm transition-all border-4 ${
-                                          selectedTime === time 
-                                          ? 'bg-slate-900 border-slate-700 text-white shadow-xl translate-y-[-2px]' 
-                                          : 'bg-slate-50 border-transparent text-slate-600 hover:bg-slate-100 hover:border-slate-200'
-                                        }`}
-                                      >
-                                          {time}
-                                      </button>
-                                  ))}
+                                  {bookingDoctor.availableTime
+                                    .filter(time => {
+                                      // If selected date is today, hide past times
+                                      const now = new Date();
+                                      const isToday = selectedDate === now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                      if (isToday) {
+                                        const slotTime = new Date(`${selectedDate} ${time}`);
+                                        return slotTime > now;
+                                      }
+                                      return true;
+                                    })
+                                    .map((time: string) => {
+                                      const isBooked = Array.isArray(bookedSlots) && bookedSlots.includes(time);
+                                      const now = new Date();
+                                      const isToday = selectedDate === now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                      let isPast = false;
+                                      if (isToday) {
+                                        const slotTime = new Date(`${selectedDate} ${time}`);
+                                        isPast = slotTime <= now;
+                                      }
+
+                                      return (
+                                        <button
+                                          key={time}
+                                          disabled={isBooked || isPast}
+                                          onClick={() => {
+                                            console.log('Time Selected:', time);
+                                            setSelectedTime(time);
+                                          }}
+                                          className={`py-4 rounded-2xl font-black text-sm transition-all border-4 relative ${
+                                            selectedTime === time 
+                                            ? 'bg-slate-900 border-slate-700 text-white shadow-xl translate-y-[-2px]' 
+                                            : isBooked || isPast
+                                            ? 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed opacity-60'
+                                            : 'bg-slate-50 border-transparent text-slate-600 hover:bg-slate-100 hover:border-slate-200'
+                                          }`}
+                                        >
+                                            {time}
+                                            {isBooked && (
+                                              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-lg shadow-sm">
+                                                {/* If time is in bookedSlots but not necessarily a real appointment, it's blocked */}
+                                                BLOCKED
+                                              </span>
+                                            )}
+                                        </button>
+                                      );
+                                    })}
                               </div>
+                              {bookingDoctor.availableTime.filter(time => {
+                                const now = new Date();
+                                const isToday = selectedDate === now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                if (isToday) {
+                                  const slotTime = new Date(`${selectedDate} ${time}`);
+                                  return slotTime > now;
+                                }
+                                return true;
+                              }).length === 0 && (
+                                <p className="mt-4 text-xs font-bold text-slate-400 text-center bg-slate-50 py-4 rounded-2xl border-2 border-dashed border-slate-100">
+                                  No more slots available for today. Please select a later date.
+                                </p>
+                              )}
                           </section>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-4">
@@ -362,11 +589,15 @@ export default function AppointmentsPage() {
                                           <span className="text-3xl font-black text-blue-600">${bookingDoctor.fee + 5}</span>
                                       </div>
                                   </div>
+                                  {!selectedTime && (
+                                    <p className="mt-4 text-[10px] font-black text-red-500 uppercase tracking-widest text-center animate-pulse">
+                                      ⚠️ Please select a time slot
+                                    </p>
+                                  )}
                                   <Button 
-                                    className="mt-10 shadow-2xl shadow-blue-200" 
+                                    className="mt-6 shadow-2xl shadow-blue-200" 
                                     fullWidth 
                                     size="lg"
-                                    disabled={!selectedTime}
                                     onClick={handleBook}
                                   >
                                       Confirm Booking

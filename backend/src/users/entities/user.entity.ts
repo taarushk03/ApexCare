@@ -46,7 +46,7 @@ export class User {
     @Column({ nullable: true })
     emergency_contact_phone: string;
 
-    @Column({ default: 'patient' })
+    @Column({ default: 'PATIENT' })
     role: string;
 
     @CreateDateColumn()

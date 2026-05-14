@@ -7,12 +7,16 @@ import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
 import { UnauthorizedException } from '@nestjs/common';
 
+import { Doctor } from '../doctors/entities/doctor.entity';
+
 @Injectable()
 export class AuthService {
 
     constructor(
         @InjectRepository(User)
         private usersRepository: Repository<User>,
+        @InjectRepository(Doctor)
+        private doctorRepository: Repository<Doctor>,
     ) { }
 
     async register(registerDto: RegisterDto) {
@@ -59,6 +63,16 @@ export class AuthService {
             throw new UnauthorizedException('Invalid email or password');
         }
 
+        let doctorId: number | null = null;
+        if (user.role === 'DOCTOR') {
+            const doctor = await this.doctorRepository.findOne({
+                where: { userId: user.id }
+            });
+            if (doctor) {
+                doctorId = doctor.id;
+            }
+        }
+
         return {
             message: 'Login successful',
             user: {
@@ -67,6 +81,7 @@ export class AuthService {
                 role: user.role,
                 firstName: user.firstName,
                 lastName: user.lastName,
+                doctorId: doctorId,
             },
         };
     }

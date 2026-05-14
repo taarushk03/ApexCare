@@ -2,90 +2,65 @@
 
 import React, { useState } from 'react';
 import PatientProfileModal from '@/components/doctor/PatientProfileModal';
-
-// Mock Patient Data
-const ALL_PATIENTS = [
-  {
-    id: "PT-8429",
-    name: "Alice Cooper",
-    age: 34,
-    gender: "Female",
-    condition: "Hypertension",
-    lastVisit: "May 5, 2026",
-    phone: "+1 (555) 123-4567",
-    email: "alice.cooper@example.com",
-    bloodGroup: "O+",
-    height: "5'6\"",
-    weight: "145 lbs",
-    allergies: ["Penicillin", "Peanuts"],
-    medications: ["Lisinopril 10mg", "AmLodipine 5mg"],
-    medicalHistory: [
-      { date: "May 5, 2026", diagnosis: "Routine Checkup", notes: "Blood pressure elevated. Increased Lisinopril." },
-      { date: "Jan 12, 2026", diagnosis: "Migraine", notes: "Prescribed Sumatriptan for acute attacks." }
-    ]
-  },
-  {
-    id: "PT-2910",
-    name: "John Doe",
-    age: 45,
-    gender: "Male",
-    condition: "Diabetes Type 2",
-    lastVisit: "April 28, 2026",
-    phone: "+1 (555) 987-6543",
-    email: "johndoe@example.com",
-    bloodGroup: "A-",
-    height: "5'11\"",
-    weight: "190 lbs",
-    allergies: ["Sulfa drugs"],
-    medications: ["Metformin 1000mg"],
-    medicalHistory: [
-      { date: "April 28, 2026", diagnosis: "Diabetes Review", notes: "HbA1c slightly high. Advised diet control." }
-    ]
-  },
-  {
-    id: "PT-5512",
-    name: "Linda Smith",
-    age: 28,
-    gender: "Female",
-    condition: "Asthma",
-    lastVisit: "May 1, 2026",
-    phone: "+1 (555) 678-1234",
-    email: "lsmith.88@example.com",
-    bloodGroup: "B+",
-    height: "5'4\"",
-    weight: "130 lbs",
-    allergies: ["Dust Mites", "Pollen"],
-    medications: ["Albuterol Inhaler"],
-    medicalHistory: [
-      { date: "May 1, 2026", diagnosis: "Asthma Exacerbation", notes: "Triggered by seasonal allergies. Prescribed short course oral steroids." },
-      { date: "Oct 15, 2025", diagnosis: "Annual Physical", notes: "Overall healthy. Asthma well controlled." }
-    ]
-  },
-  {
-    id: "PT-1102",
-    name: "Robert Johnson",
-    age: 62,
-    gender: "Male",
-    condition: "Arthritis",
-    lastVisit: "March 10, 2026",
-    phone: "+1 (555) 444-5555",
-    email: "rjohnson@example.com",
-    bloodGroup: "O-",
-    height: "6'0\"",
-    weight: "210 lbs",
-    allergies: [],
-    medications: ["Ibuprofen 400mg", "Celecoxib 200mg"],
-    medicalHistory: [
-      { date: "March 10, 2026", diagnosis: "Osteoarthritis Follow-up", notes: "Joint pain worsening in right knee. Recommended physical therapy." }
-    ]
-  }
-];
+import { useAuth } from '@/context/AuthContext';
 
 export default function PatientsPage() {
+  const { user } = useAuth();
+  const [patients, setPatients] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const filteredPatients = ALL_PATIENTS.filter(p => 
+  React.useEffect(() => {
+    const fetchPatients = async () => {
+      if (!user?.doctorId) return;
+      try {
+        const response = await fetch(`http://localhost:3001/patients/doctor/${user.doctorId}`);
+        const data = await response.json();
+        
+        // Map backend patient to frontend structure
+        const mappedPatients = data.map((p: any) => ({
+          id: `PT-${p.id.toString().padStart(4, '0')}`,
+          dbId: p.id,
+          name: `${p.firstName} ${p.lastName}`,
+          age: calculateAge(p.dob),
+          gender: p.gender || "Not specified",
+          condition: "Active Patient", // Could be dynamic if we had diagnosis table
+          lastVisit: "Recent", // Could be dynamic based on last appointment
+          phone: p.phone,
+          email: p.email,
+          bloodGroup: p.blood_group,
+          height: p.height,
+          weight: p.weight,
+          allergies: p.allergies ? p.allergies.split(',') : [],
+          medications: [], // Placeholder
+          medicalHistory: [] // Placeholder
+        }));
+        
+        setPatients(mappedPatients);
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to fetch doctor patients:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchPatients();
+  }, [user]);
+
+  const calculateAge = (dobString: string) => {
+    if (!dobString) return 0;
+    const today = new Date();
+    const birthDate = new Date(dobString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const filteredPatients = patients.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.condition.toLowerCase().includes(searchTerm.toLowerCase())

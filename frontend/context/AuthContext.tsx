@@ -11,6 +11,7 @@ interface User {
   email: string;
   role?: string;
   password?: string;
+  doctorId?: number | null;
 }
 
 interface AuthContextType {
@@ -70,7 +71,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('currentUser', JSON.stringify(data.user));
       localStorage.setItem('isAuthenticated', 'true');
 
-      router.push('/dashboard');
+      if (data.user.role === 'DOCTOR') {
+        router.push('/doctor/dashboard');
+      } else {
+        router.push('/dashboard');
+      }
 
       return { success: true };
     } catch (error) {

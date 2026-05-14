@@ -26,6 +26,11 @@ export class PatientsController {
     return this.patientsService.findAll();
   }
 
+  @Get('doctor/:doctorId')
+  findByDoctor(@Param('doctorId') doctorId: string) {
+    return this.patientsService.findByDoctor(+doctorId);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.patientsService.findOne(+id);

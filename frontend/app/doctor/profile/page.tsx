@@ -7,62 +7,110 @@ import { getSharedDoctors, saveSharedDoctors, initSharedData, Doctor } from '@/l
 export default function DoctorProfilePage() {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-
-  const [profile, setProfile] = useState<Doctor>({
-    id: 0,
-    name: "",
-    email: "",
-    phone: "",
-    specialty: "",
-    experience: "",
-    qualifications: "",
-    bio: "",
-    clinicAddress: "",
-    availableDays: "",
-    rating: "0.0",
-    fee: 0,
-    image: "",
-    availableTime: []
-  });
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    initSharedData();
-    if (user?.email) {
-      const doctors = getSharedDoctors();
-      const myDoctorRecord = doctors.find(d => d.email === user.email);
-      if (myDoctorRecord) {
-        setProfile(myDoctorRecord);
-      } else {
-        // Fallback for new doctor that doesn't exist in mock data yet
-        setProfile(prev => ({
-          ...prev,
-          name: user.name || "Doctor",
-          email: user.email || ""
-        }));
+    const fetchProfile = async () => {
+      // If user is not loaded yet, wait
+      if (!user) return;
+
+      // If user is loaded but not a doctor or missing ID, stop loading anyway
+      if (user.role !== 'DOCTOR' || !user.doctorId) {
+        setLoading(false);
+        return;
       }
-    }
+
+      try {
+        console.log('--- Fetching Doctor Profile ---');
+        const response = await fetch(`http://localhost:3001/doctors/${user.doctorId}`);
+        
+        if (!response.ok) {
+           throw new Error('Failed to fetch profile');
+        }
+
+        const data = await response.json();
+        setProfile({
+          id: data.id,
+          name: data.fullName,
+          email: data.email,
+          phone: data.phone || "",
+          specialty: data.specialization,
+          experience: data.experience?.toString() || "0",
+          qualifications: data.qualifications || "",
+          bio: data.bio || "",
+          clinicAddress: data.clinicLocation || "",
+          availableDays: data.availability || "",
+          rating: "4.9",
+          fee: 50,
+          image: data.profileImage || "",
+          availableTime: []
+        });
+      } catch (error) {
+        console.error('Failed to fetch doctor profile:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
   }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setProfile(prev => ({ ...prev, [name]: value }));
+    setProfile((prev: any) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    setIsEditing(false);
-    
-    // Save to centralized data
-    const doctors = getSharedDoctors();
-    const updatedDoctors = doctors.map(d => d.id === profile.id ? profile : d);
-    // If not found (new doctor), append it
-    if (!doctors.find(d => d.id === profile.id)) {
-        profile.id = Date.now(); // assign an ID
-        updatedDoctors.push(profile);
+  const handleSave = async () => {
+    if (!profile || !user?.doctorId) return;
+    try {
+      const response = await fetch(`http://localhost:3001/doctors/${user.doctorId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: profile.name,
+          email: profile.email,
+          phone: profile.phone,
+          specialization: profile.specialty,
+          experience: parseInt(profile.experience) || 0,
+          qualifications: profile.qualifications,
+          bio: profile.bio,
+          clinicLocation: profile.clinicAddress,
+          availability: profile.availableDays
+        })
+      });
+
+      if (response.ok) {
+        setIsEditing(false);
+        alert("Profile updated successfully!");
+      } else {
+        alert("Failed to update profile.");
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
     }
-    
-    saveSharedDoctors(updatedDoctors);
-    alert("Profile updated successfully in shared storage!");
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-slate-400 font-bold animate-pulse text-xs uppercase tracking-widest">Loading Profile...</p>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="bg-white rounded-3xl p-12 text-center border border-slate-100 shadow-sm">
+        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <h3 className="text-lg font-bold text-slate-800">Profile Not Found</h3>
+        <p className="text-slate-500 text-sm mt-1">We couldn't retrieve your doctor profile information.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl space-y-6">

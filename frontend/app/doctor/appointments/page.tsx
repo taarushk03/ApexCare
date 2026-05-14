@@ -10,37 +10,59 @@ export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
 
   useEffect(() => {
-    initSharedData();
-    if (!user?.email) return;
+    const fetchAppointments = async () => {
+      if (!user?.doctorId) return;
+      try {
+        const response = await fetch(`http://localhost:3001/appointments/doctor/${user.doctorId}`);
+        const data = await response.json();
+        
+        const mappedAppts: Appointment[] = data.map((a: any) => ({
+          id: a.id,
+          patientEmail: a.patient?.email || '',
+          patientName: `${a.patient?.firstName || ''} ${a.patient?.lastName || ''}`.trim() || 'Unknown Patient',
+          doctorId: a.doctorId,
+          doctorName: user.firstName + ' ' + user.lastName,
+          specialty: 'Specialist',
+          time: new Date(a.appointmentDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          date: new Date(a.appointmentDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          type: a.reason.includes('Video') ? 'Video' : 'In-Person',
+          status: a.status,
+          phone: a.patient?.phone || ''
+        }));
+        setAppointments(mappedAppts);
+      } catch (error) {
+        console.error('Failed to fetch doctor appointments:', error);
+      }
+    };
 
-    const allAppts = getSharedAppointments();
-    const doctors = getSharedDoctors();
-    const myDoctorRecord = doctors.find(d => d.email === user.email);
-
-    let myAppts = allAppts.filter(a => a.doctorName.toLowerCase().includes(user?.name?.toLowerCase().split(' ')[0] || ''));
-    if (myDoctorRecord) {
-      myAppts = allAppts.filter(a => a.doctorId === myDoctorRecord.id);
-    }
-
-    setAppointments(myAppts);
+    fetchAppointments();
   }, [user]);
 
-  const handleUpdateStatus = (apt: Appointment, newStatus: 'Upcoming' | 'Completed' | 'Cancelled' | 'In Progress') => {
-    const updatedApt = { ...apt, status: newStatus };
-    updateSharedAppointment(updatedApt);
-    
-    // Update local state
-    setAppointments(prev => prev.map(a => a.id === apt.id ? updatedApt : a));
+  const handleUpdateStatus = async (apt: Appointment, newStatus: string) => {
+    try {
+      const response = await fetch(`http://localhost:3001/appointments/${apt.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      if (response.ok) {
+        setAppointments(prev => prev.map(a => a.id === apt.id ? { ...a, status: newStatus } : a));
+      }
+    } catch (error) {
+      console.error('Failed to update appointment status:', error);
+    }
   };
 
   const filteredAppointments = appointments.filter((apt) => {
     const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    const isToday = apt.date === today || apt.date === new Date().getDate().toString() || apt.date.includes(new Date().getDate().toString());
+    const isToday = apt.date === today;
 
-    if (filter === 'Today') return isToday;
-    if (filter === 'Upcoming') return (apt.status === 'Upcoming' || apt.status === 'In Progress') && !isToday;
+    if (filter === 'Today') return isToday && apt.status !== 'Cancelled';
+    if (filter === 'Upcoming') return (apt.status === 'Pending' || apt.status === 'Confirmed' || apt.status === 'In Progress') && !isToday;
     if (filter === 'Completed') return apt.status === 'Completed';
-    return true; // For 'All'
+    if (filter === 'Cancelled') return apt.status === 'Cancelled';
+    return apt.status !== 'Cancelled'; // For 'All', hide cancelled
   });
 
   return (
@@ -57,7 +79,7 @@ export default function AppointmentsPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex gap-2 overflow-x-auto custom-scrollbar">
-        {['All', 'Today', 'Upcoming', 'Completed'].map((tab) => (
+        {['All', 'Today', 'Upcoming', 'Completed', 'Cancelled'].map((tab) => (
           <button
             key={tab}
             onClick={() => setFilter(tab)}
@@ -95,6 +117,7 @@ export default function AppointmentsPage() {
               <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
                 apt.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' :
                 apt.status === 'In Progress' ? 'bg-blue-100 text-blue-700 animate-pulse' :
+                apt.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
                 'bg-slate-100 text-slate-600'
               }`}>
                 {apt.status}
@@ -113,7 +136,7 @@ export default function AppointmentsPage() {
             </div>
 
             <div className="mt-auto pt-4 border-t border-slate-50 flex gap-2">
-              {apt.status === 'Upcoming' && (
+              {(apt.status === 'Pending' || apt.status === 'Confirmed') && (
                 <button 
                   onClick={() => handleUpdateStatus(apt, 'In Progress')}
                   className={`flex-1 py-2 rounded-xl text-sm font-bold text-white transition-colors shadow-sm ${
@@ -130,7 +153,7 @@ export default function AppointmentsPage() {
                   Mark Completed
                 </button>
               )}
-              {apt.status === 'Upcoming' && (
+              {(apt.status === 'Pending' || apt.status === 'Confirmed' || apt.status === 'In Progress') && (
                  <button 
                  onClick={() => handleUpdateStatus(apt, 'Cancelled')}
                  className="flex-1 py-2 rounded-xl border border-slate-200 text-sm font-bold text-red-500 hover:bg-red-50 transition-colors">

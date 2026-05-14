@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseIntPipe } from '@nestjs/common';
 import { AppointmentsService } from './appointments.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { Appointment } from './entities/appointment.entity';
@@ -12,33 +12,46 @@ export class AppointmentsController {
     return this.appointmentsService.create(createAppointmentDto);
   }
 
+  @Post('cleanup')
+  cleanupDuplicates(): Promise<string> {
+    return this.appointmentsService.cleanupDuplicates();
+  }
+
   @Get()
   findAll(): Promise<Appointment[]> {
     return this.appointmentsService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string): Promise<Appointment> {
-    return this.appointmentsService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateData: Partial<Appointment>): Promise<Appointment> {
-    return this.appointmentsService.update(+id, updateData);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string): Promise<void> {
-    return this.appointmentsService.remove(+id);
-  }
-
   @Get('patient/:patientId')
-  findByPatient(@Param('patientId') patientId: string): Promise<Appointment[]> {
-    return this.appointmentsService.findByPatient(+patientId);
+  findByPatient(@Param('patientId', ParseIntPipe) patientId: number): Promise<Appointment[]> {
+    return this.appointmentsService.findByPatient(patientId);
+  }
+
+  @Get('booked-slots')
+  findBookedSlots(
+    @Query('doctorId', ParseIntPipe) doctorId: number,
+    @Query('date') date: string,
+  ): Promise<string[]> {
+    return this.appointmentsService.findBookedSlots(doctorId, date);
   }
 
   @Get('doctor/:doctorId')
-  findByDoctor(@Param('doctorId') doctorId: string): Promise<Appointment[]> {
-    return this.appointmentsService.findByDoctor(+doctorId);
+  findByDoctor(@Param('doctorId', ParseIntPipe) doctorId: number): Promise<Appointment[]> {
+    return this.appointmentsService.findByDoctor(doctorId);
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number): Promise<Appointment> {
+    return this.appointmentsService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(@Param('id', ParseIntPipe) id: number, @Body() updateData: Partial<Appointment>): Promise<Appointment> {
+    return this.appointmentsService.update(id, updateData);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number): Promise<Appointment> {
+    return this.appointmentsService.remove(id);
   }
 }

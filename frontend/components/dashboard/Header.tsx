@@ -11,6 +11,27 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user } = useAuth();
   const pathname = usePathname();
+  const [doctorName, setDoctorName] = React.useState<string | null>(null);
+
+  const isDoctorPortal = pathname.startsWith('/doctor');
+
+  React.useEffect(() => {
+    const fetchDoctorProfile = async () => {
+      if (isDoctorPortal && user?.doctorId) {
+        try {
+          const response = await fetch(`http://localhost:3001/doctors/${user.doctorId}`);
+          const data = await response.json();
+          if (data && data.fullName) {
+            setDoctorName(data.fullName);
+          }
+        } catch (error) {
+          console.error('Failed to fetch doctor profile for header:', error);
+        }
+      }
+    };
+
+    fetchDoctorProfile();
+  }, [isDoctorPortal, user?.doctorId]);
 
   const getPageTitle = (path: string) => {
     const titles: { [key: string]: string } = {
@@ -20,16 +41,26 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       '/consultation': 'Start Consultation',
       '/reports': 'Medical Reports',
       '/profile': 'My Profile',
+      '/doctor/dashboard': 'Doctor Dashboard',
+      '/doctor/patients': 'My Patients',
+      '/doctor/appointments': 'Appointments',
+      '/doctor/schedule': 'My Schedule',
+      '/doctor/profile': 'Doctor Profile',
     };
     return titles[path] || 'ApexCare';
   };
 
-  const getInitials = (firstName?: string, lastName?: string) => {
-    if (!firstName && !lastName) return 'JD';
-    const firstInitial = firstName ? firstName[0] : '';
-    const lastInitial = lastName ? lastName[0] : '';
+  const getInitials = (name?: string) => {
+    if (!name) return 'JD';
+    const parts = name.split(' ');
+    const firstInitial = parts[0] ? parts[0][0] : '';
+    const lastInitial = parts[parts.length - 1] ? parts[parts.length - 1][0] : '';
     return (firstInitial + lastInitial).toUpperCase() || 'JD';
   };
+
+  const displayName = isDoctorPortal && doctorName 
+    ? (doctorName.toLowerCase().startsWith('dr') ? doctorName : `Dr. ${doctorName}`) 
+    : (user?.firstName ? `${user.firstName} ${user.lastName}` : 'Guest User');
 
   return (
     <header className="h-20 bg-white border-b-2 border-slate-50 flex items-center justify-between px-8 sticky top-0 z-30">
@@ -50,12 +81,12 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       <div className="flex items-center space-x-6">
         <div className="flex items-center space-x-3 bg-slate-50 p-1.5 pr-4 rounded-2xl border-2 border-transparent hover:border-slate-100 transition-all duration-300">
           <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-blue-100 ring-2 ring-white">
-            {user ? getInitials(user.firstName, user.lastName) : 'JD'}
+            {getInitials(displayName)}
           </div>
           <div className="hidden sm:block text-left">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Welcome</p>
             <p className="text-sm font-bold text-slate-800 leading-tight mt-0.5">
-              {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'Guest User'}
+              {displayName}
             </p>
           </div>
         </div>
