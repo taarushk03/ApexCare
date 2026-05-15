@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Logo } from '@/components/ui/Logo';
+import { Snippet } from 'next/font/google';
 
 interface NavItemProps {
   href: string;
@@ -30,7 +31,6 @@ const NavItem: React.FC<NavItemProps> = ({ href, label, icon, active }) => (
     </span>
   </Link>
 );
-
 const DoctorSidebar: React.FC = () => {
   const pathname = usePathname();
   const { logout } = useAuth();
